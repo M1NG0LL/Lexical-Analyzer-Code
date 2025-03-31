@@ -6,7 +6,7 @@
 
 using namespace std;
 char nextChar;
-int charIndex = 0;
+int charIndex = 0, lineNumber = 1, charPosition = 0;
 string inputBuffer;
 
 /* getChar - a function to get the next character of input and determine its character class */
@@ -50,12 +50,18 @@ enum class TokenCode
     MULTI_OP,
     LEFT_PAREN,
     RIGHT_PAREN,
+    EQUAL_OP,
+    NOT_EQUAL,
+    LESS_EQ,
+    GREATER_EQ,
 };
 
 struct Token
 {
     TokenCode type;
     string value;
+    int line;
+    int position;
 };
 
 // reserved words
@@ -82,6 +88,14 @@ TokenCode lookup(const string &token)
         return TokenCode::DIV_OP;
     if (token == "=")
         return TokenCode::ASSIGN_OP;
+    if (token == "==")
+        return TokenCode::EQUAL_OP;
+    if (token == "!=")
+        return TokenCode::NOT_EQUAL;
+    if (token == "<=")
+        return TokenCode::LESS_EQ;
+    if (token == ">=")
+        return TokenCode::GREATER_EQ;
     if (token == "(")
         return TokenCode::LEFT_PAREN;
     if (token == ")")
@@ -101,12 +115,15 @@ vector<Token> tokenize(const string input)
     string current;
     inputBuffer = input;
     charIndex = 0;
+    lineNumber = 1;
+    charPosition = 0;
     getChar();
 
     while (nextChar != '\0')
     {
         getNonBlank();
         current.clear();
+        int startPos = charPosition;
 
         if (isalpha(nextChar)) // Identifiers or Reserved Words
         {
@@ -114,8 +131,9 @@ vector<Token> tokenize(const string input)
             {
                 current += nextChar;
                 getChar();
+                charPosition++;
             }
-            tokens.push_back({lookup(current), current});
+            tokens.push_back({lookup(current), current, lineNumber, startPos});
         }
         else if (isdigit(nextChar)) // Numbers
         {
@@ -123,6 +141,7 @@ vector<Token> tokenize(const string input)
             {
                 current += nextChar;
                 getChar();
+                charPosition++;
             }
             if (nextChar == '.')
             {
@@ -132,19 +151,32 @@ vector<Token> tokenize(const string input)
                 {
                     current += nextChar;
                     getChar();
+                    charPosition++;
                 }
-                tokens.push_back({TokenCode::FLOAT_LIT, current});
+                tokens.push_back({TokenCode::FLOAT_LIT, current, lineNumber, startPos});
             }
             else
             {
-                tokens.push_back({TokenCode::INT_LIT, current});
+                tokens.push_back({TokenCode::INT_LIT, current, lineNumber, startPos});
             }
         }
-        else if (ispunct(nextChar)) // Operators and Symbols
+        else if (ispunct(nextChar))
         {
             current += nextChar;
-            tokens.push_back({lookup(current), current});
+            char tempNext = inputBuffer[charIndex];
+
+            if ((current == "=" && tempNext == '=') ||
+                (current == "!" && tempNext == '=') ||
+                (current == "<" && tempNext == '=') ||
+                (current == ">" && tempNext == '='))
+            {
+                getChar();
+                current += nextChar;
+            }
+
+            tokens.push_back({lookup(current), current, lineNumber, startPos});
             getChar();
+            charPosition++;
         }
     }
 
@@ -160,7 +192,11 @@ int main()
 
     for (auto token : tokens)
     {
-        cout << "Token: " << token.value << " | Type: " << static_cast<int>(token.type) << endl;
+        cout << "Lexeme: " << token.value
+             << " | Token: " << static_cast<int>(token.type)
+             << " | Line: " << token.line
+             << " | Position: " << token.position
+             << endl;
     }
     return 0;
 }
