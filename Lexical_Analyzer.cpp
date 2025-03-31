@@ -198,5 +198,6 @@ int main()
              << " | Position: " << token.position
              << endl;
     }
-    return 0;
+
+    cin >> input;
 }
